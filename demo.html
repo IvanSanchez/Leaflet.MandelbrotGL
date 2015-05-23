@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang='en'>
+<meta charset="utf-8">
+<head>
+	<title>Leaflet MandelbrotGL demo</title>
+
+	<link rel="stylesheet" href="Leaflet-1.0-dev/leaflet.css" />
+
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+	<script type="text/javascript" src="Leaflet-1.0-dev/leaflet.js"></script>
+	<script src="Leaflet.GridLayer.MandelbrotGL.js"></script>
+</head>
+<body>
+
+	<h1>Leaflet MandelbrotGL demo</h1>
+
+	<div id="map" style='width:100%; max-height:100%; height:600px;'></div>
+	<div>X:<span id="x"></div>
+	<div>Y:<span id="y"></div>
+	<div>Zoom: <span id="zoom"></div>
+
+	<p>This Leaflet plugin uses WebGL and <code>&lt;canvas&gt;</code> to render the Mandelbrot set insanely fast.</p>
+	
+	<p>Each tile is 256 pixels wide and high, and 256 pixels map to one unit in the complex plane. There is a very simple coordinate system to account for this and display coordinates when hovering the mouse over the map.</p>
+	
+	<p>The plugin works only with Leaflet 1.0 (master branch as of 2015-05-22) due to the naming of the <code>L.GridLayer</code> class.</p>
+	
+	<p>The Mandelbrot set is calculated using floating point arithmetic in the GPU, and unfortunately artifacts start showing up at zoom level 20, even though the mandelbrot set can be infinitely zoomed in.</p>
+	
+	<p>To do the rendering, the layer creates an invisible canvas with a WebGL context, renders one tile there, then copies the image to the tiled canvases. This way, the shader code has to be uploaded just once to the GPU.</p>
+	
+	<script type="text/javascript">
+
+		var tileSize = 256;
+
+		// Set up a simple coordinate system mapping the coordinate units to the tile size in pixels.
+		L.CRS.Mandelbrot = L.extend({}, L.CRS.Simple, {
+			transformation: new L.Transformation(tileSize, 0, -tileSize, 0)
+		});
+
+		var map = L.map('map',{
+			crs: L.CRS.Mandelbrot,
+			minZoom: -5,
+			maxZoom: Infinity
+		}).setView([0, -0.5], 0);
+
+		var mandelbrot = L.gridLayer.mandelbrotGL({tileSize: tileSize}).addTo(map);
+
+
+		function logEvent(e) { console.log(e.type); }
+
+		map.on('mousemove', function(ev){
+			document.getElementById('x').innerHTML = ev.latlng.lng;
+			document.getElementById('y').innerHTML = ev.latlng.lat;
+		});
+
+		map.on('zoomend', function(ev){
+			document.getElementById('zoom').innerHTML = map.getZoom();
+		});
+
+	</script>
+</body>
+</html>
