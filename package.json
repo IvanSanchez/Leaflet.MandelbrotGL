@@ -1,0 +1,30 @@
+{
+  "name": "Leaflet.MandelbrotGL",
+  "version": "0.0.0",
+  "description": "Renders the Mandelbrot set in a LeafletJS map using WebGL",
+  "main": "Leaflet.GridLayer.MandelbrotGL.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/IvanSanchez/Leaflet.MandelbrotGL.git"
+  },
+  "keywords": [
+    "mandelbrot",
+    "webgl",
+    "leaflet"
+  ],
+  "author": "Iván Sánchez Ortega <ivan@sanchezortega.es>",
+  "license": "Beerware",
+  "bugs": {
+    "url": "https://github.com/IvanSanchez/Leaflet.MandelbrotGL/issues"
+  },
+  "devDependencies": {
+    "gobble-cli": "^0.4.2",
+    "gobble-replace": "^0.2.2",
+    "gobble-uglifyjs": "^0.2.1",
+    "jsesc": "^0.5.0"
+  },
+  "scripts": {
+    "postinstall": "node_modules/gobble-cli/lib/index.js build dist",
+    "watch": "node_modules/gobble-cli/lib/index.js watch dist"
+  }
+}
