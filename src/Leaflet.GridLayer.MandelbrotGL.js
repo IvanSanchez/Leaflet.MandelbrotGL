@@ -7,7 +7,7 @@ L.GridLayer.MandelbrotGL = L.GridLayer.extend({
 	//   passed through to the fragment shader.
 	// Note that the source is in the shaders/ directory and will
 	//   get included here with some gobblejs magic.
-	_vertexShader: <@simple_vertex_shader@>,
+	_vertexShader: require('./simple_vertex_shader.js'),
 
 	// The fragment shader is where the magic happens. Based on 
 	//   the coordinates of the four corners, it interpolates the 
@@ -16,25 +16,29 @@ L.GridLayer.MandelbrotGL = L.GridLayer.extend({
 	//   of 10; then it maps the steps to a color using a hue scale.
 	// The code is pretty much inspired by http://learningwebgl.com/lessons/example01/
 	//
+	// The fragment shader can change in runtime, but we want to reuse some
+	//   code (the mandelbrot code is the same for any colouring algorithm,
+	//   as is the HCL→RGB functions), so the functions are in separate files.
+	// These will be concatenated into a shader program in runtime.
+	//
 	// Note that the source is in the shaders/ directory and will
 	//   get included here with some gobblejs magic.
 	//
 	// TODO: Implement double floating precision as per 
 	//   https://www.thasler.com/blog/blog/glsl-part2-emu
-	_fragmentShaderMandelbrot: <@fragment_shader_mandelbrot@>,
-	_fragmentShaderHueRamp:    <@fragment_shader_hue_ramp@>,
-	_fragmentShaderBlueRamp:   <@fragment_shader_blue_ramp@>,
-	_fragmentShaderZebraRamp:  <@fragment_shader_zebra_ramp@>,
-	_fragmentShaderHcl:        <@fragment_shader_hcl@>,
-	_fragmentShaderHclHue:     <@fragment_shader_hcl_hue@>,
-	_fragmentShaderHclBlue:    <@fragment_shader_hcl_blue@>,
+	_fragMandelbrot:  require('./fragment_shader_mandelbrot.js'),
+	_fragHueramp:     require('./fragment_shader_hueramp.js'),
+	_fragBlueramp:    require('./fragment_shader_blueramp.js'),
+	_fragZebra:       require('./fragment_shader_zebra.js'),
+	_fragHcl:         require('./fragment_shader_hcl.js'),
+	_fragHclHueramp:  require('./fragment_shader_hcl_hueramp.js'),
+	_fragHclBlueramp: require('./fragment_shader_hcl_blueramp.js'),
 
 	options: {
 		maxZoom: 22,
 		colorRamp: 'hue',
 		fractal: 'mandelbrot'
 	},
-
 	
 	// On instantiating the layer, it will initialize all the GL context
 	//   and upload the shaders to the GPU, along with the vertex buffer
@@ -71,18 +75,18 @@ L.GridLayer.MandelbrotGL = L.GridLayer.extend({
 	_loadGLProgram: function(fractal, ramp) {
 		var gl = this._gl;
 		
-		var colouringFragment = this._fragmentShaderHueRamp;	// Default
+		var colouringFragment = this._fragHueramp;	// Default
 		if (this.options.colorRamp == 'blue') {
-			colouringFragment = this._fragmentShaderBlueRamp;
+			colouringFragment = this._fragBlueramp;
 		} else if (this.options.colorRamp == 'zebra') {
-			colouringFragment = this._fragmentShaderZebraRamp;
+			colouringFragment = this._fragZebra;
 		} else if (this.options.colorRamp == 'hclhue') {
-			colouringFragment = this._fragmentShaderHcl + this._fragmentShaderHclHue;
+			colouringFragment = this._fragHcl + this._fragHclHueramp;
 		} else if (this.options.colorRamp == 'hclblue') {
-			colouringFragment = this._fragmentShaderHcl + this._fragmentShaderHclBlue;
+			colouringFragment = this._fragHcl + this._fragHclBlueramp;
 		}
 		
-		var fractalFragment = this._fragmentShaderMandelbrot;
+		var fractalFragment = this._fragMandelbrot;
 		
 		
 		var program = gl.createProgram();

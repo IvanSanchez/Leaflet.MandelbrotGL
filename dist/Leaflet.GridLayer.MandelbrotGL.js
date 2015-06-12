@@ -1,3 +1,4 @@
+(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({"@/Leaflet.GridLayer.MandelbrotGL.js":[function(require,module,exports){
 
 L.GridLayer.MandelbrotGL = L.GridLayer.extend({
 
@@ -7,7 +8,7 @@ L.GridLayer.MandelbrotGL = L.GridLayer.extend({
 	//   passed through to the fragment shader.
 	// Note that the source is in the shaders/ directory and will
 	//   get included here with some gobblejs magic.
-	_vertexShader: 'attribute vec2 aVertexPosition;\nattribute highp vec3 aPlotPosition;\nvarying highp vec3 vPosition;\nvoid main(void) {\n\tgl_Position = vec4(aVertexPosition, 1.0, 1.0);\n\tvPosition = aPlotPosition;\n}',
+	_vertexShader: require('./simple_vertex_shader.js'),
 
 	// The fragment shader is where the magic happens. Based on 
 	//   the coordinates of the four corners, it interpolates the 
@@ -16,25 +17,29 @@ L.GridLayer.MandelbrotGL = L.GridLayer.extend({
 	//   of 10; then it maps the steps to a color using a hue scale.
 	// The code is pretty much inspired by http://learningwebgl.com/lessons/example01/
 	//
+	// The fragment shader can change in runtime, but we want to reuse some
+	//   code (the mandelbrot code is the same for any colouring algorithm,
+	//   as is the HCL→RGB functions), so the functions are in separate files.
+	// These will be concatenated into a shader program in runtime.
+	//
 	// Note that the source is in the shaders/ directory and will
 	//   get included here with some gobblejs magic.
 	//
 	// TODO: Implement double floating precision as per 
 	//   https://www.thasler.com/blog/blog/glsl-part2-emu
-	_fragmentShaderMandelbrot: '#version 100\n\nprecision highp float;\n\nvarying highp vec3 vPosition;\n\nint fractal(void) {\n\tfloat cx = vPosition.x;\n\tfloat cy = vPosition.y;\n\tfloat cz = vPosition.z;\n\n\tfloat x = 0.0;\n\tfloat y = 0.0;\n\tfloat tempX = 0.0;\n\tint i = 0;\n\tint m = 100 + int(cz) * 50;\n\tint runaway = 0;\n\tfor (int i=1; i < 200; i++) {\n\t\ttempX = x * x - y * y + float(cx);\n\t\ty = 2.0 * x * y + float(cy);\n\t\tx = tempX;\n\t\tif (runaway == 0 && x * x + y * y > 100.0) {\n\t\t\trunaway = i;\n\t\t\tbreak;\n\t\t}\n\t}\n\n\treturn runaway;\n}',
-	_fragmentShaderHueRamp:    '\nvoid main(void) {\n\tint steps = 0;\n\tfloat hue;\n\tfloat saturation;\n\tfloat value;\n\tfloat hueRound;\n\tint hueIndex;\n\tfloat f;\n\tfloat p;\n\tfloat q;\n\tfloat t;\n\t\n\tsteps = fractal();\n\n\tif (steps != 0) {\n\t\thue = float(steps) / 200.0;\n\t\tsaturation = 0.6;\n\t\tvalue = 1.0;\n\n\t\thueRound = hue * 6.0;\n\t\thueIndex = int(mod(float(int(hueRound)), 6.0));\n\t\tf = fract(hueRound);\n\t\tp = value * (1.0 - saturation);\n\t\tq = value * (1.0 - f * saturation);\n\t\tt = value * (1.0 - (1.0 - f) * saturation);\n\n\t\tif (hueIndex == 0)\n\t\t\tgl_FragColor = vec4(value, t, p, 1.0);\n\t\telse if (hueIndex == 1)\n\t\t\tgl_FragColor = vec4(q, value, p, 1.0);\n\t\telse if (hueIndex == 2)\n\t\t\tgl_FragColor = vec4(p, value, t, 1.0);\n\t\telse if (hueIndex == 3)\n\t\t\tgl_FragColor = vec4(p, q, value, 1.0);\n\t\telse if (hueIndex == 4)\n\t\t\tgl_FragColor = vec4(t, p, value, 1.0);\n\t\telse if (hueIndex == 5)\n\t\t\tgl_FragColor = vec4(value, p, q, 1.0);\n\n\t} else {\n\t\tgl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);\n\t}\n}',
-	_fragmentShaderBlueRamp:   '\nvoid main(void) {\n\tint steps = 0;\n\tfloat blue;\n\tfloat yellow;\n\t\n\tsteps = fractal();\n\n\tif (steps != 0) {\n\t\tblue = float(steps) / 100.0;\n\t\tyellow = blue / 2.0;\n\n\t\tgl_FragColor = vec4(yellow, yellow, blue, 1.0);\n\n\t} else {\n\t\tgl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);\n\t}\n}',
-	_fragmentShaderZebraRamp:  '\n\nvoid main(void) {\n\tint steps = 0;\n\t\n\tsteps = fractal();\n\n\t// This is a *very* dirty way of doing modulo 2 operations.\n\t// Multiplying a 32-bit integer by 2^31 will effectively \n\t//   shift the integer 31 bits and drop the 31 most significant\n\t//   bits, leaving only the least significant one.\n\t// Then, divide the number by 2^30 to clear the overflow.\n\t\n\tif ((steps * 2147483648) / 1073741824 != 0) {\n\t\tgl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);\n\t} else {\n\t\tgl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);\n\t}\n}\n',
-	_fragmentShaderHcl:        '\n// This file defines a hcl2rgb transformation, which is used by specific colour ramps.\n\n\n\n#define M_PI 3.1415926535897932384626433832795\n#define M_TAU 2.0 * M_PI\n\n\n// D65 standard referent\n#define lab_X 0.950470\n#define lab_Y 1.0\n#define lab_Z 1.088830\n\nmat4 xyz2rgb = mat4( 3.2404542, -1.5371385, -0.4985314, 0.0,\n                    -0.9692660,  1.8760108,  0.0415560, 0.0,\n                     0.0556434, -0.2040259,  1.0572252, 0.0,\n                     0.0,              0.0,              0.0,             1.0);\n\nfloat lab2xyz(float n) {\n\tif (n > 0.00080817591) {// 0.206893034 / 256\n\t\treturn pow(n, 3.0);\n\t} else {\n\t\treturn (n - 0.0005387931) / 0.030418113;\t// (x - 4/29) / 7.787037 but in [0..1] instead of [0..256]\n\t}\n}\n\nvec4 hcl2rgb(vec4 hclg) {\n\tfloat h = hclg[0];\t// Hue\n\tfloat c = hclg[1];\t// Chrominance\n\tfloat l = hclg[2];\t// Lightness\n\tfloat alpha = hclg[3];\t// Alpha\n\n\t// First, convert HCL to L*a*b colour space\n\th *= M_TAU; // from 0..1 to 1..2*pi\n\tfloat a = cos(h) * c;\n\tfloat b = sin(h) * c;\n\t\n\t// L*a*b to XYZ\n\tfloat y = (l + 0.0625) / 0.453126;\t// y = (l+16) / 116 but in [0..1] instead of [0..255]\n\tfloat x = y + (a / 1.953125);     \t// x = y + (a/500) but in [0..1] instead of [0..255]\n\tfloat z = y - (b / 0.78125);      \t// z = y - (b/200) but in [0..1] instead of [0..255]\n\t\n\tx = lab2xyz(x) * lab_X;\n\ty = lab2xyz(y) * lab_Y;\n\tz = lab2xyz(z) * lab_Z;\n\t\n\treturn vec4(x, y, z, alpha) * xyz2rgb;\n}\n\n',
-	_fragmentShaderHclHue:     '\nvoid main(void) {\n\tint steps = 0;\n\t\n\tsteps = fractal();\n\n\tif (steps > 0) {\n\t\tfloat hue    = float(steps) / 25.0;\n\t\tfloat light = 0.2 + float(steps) / 1000.0;\n\t\tfloat chroma = clamp(float(steps) / 300.0, 0.3, 0.7);\n\t\t\n\t\tgl_FragColor = hcl2rgb( vec4(hue, chroma, light, 1.0) );\n\t} else {\n\t\tgl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);\n\t}\n}\n',
-	_fragmentShaderHclBlue:    '\nvoid main(void) {\n\tint steps = 0;\n\t\n\tsteps = fractal();\n\n\tif (steps > 0) {\n\t\tfloat hue    = 0.7 + float(steps) / 2000.0;\n\t\tfloat light  = 0.15 + float(steps) / 400.0;\n\t\tfloat chroma = float(steps) / 200.0;\n\t\t\n\t\tgl_FragColor = hcl2rgb( vec4(hue, chroma, light, 1.0) );\n\t} else {\n\t\tgl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);\n\t}\n}\n',
+	_fragMandelbrot:  require('./fragment_shader_mandelbrot.js'),
+	_fragHueramp:     require('./fragment_shader_hueramp.js'),
+	_fragBlueramp:    require('./fragment_shader_blueramp.js'),
+	_fragZebra:       require('./fragment_shader_zebra.js'),
+	_fragHcl:         require('./fragment_shader_hcl.js'),
+	_fragHclHueramp:  require('./fragment_shader_hcl_hueramp.js'),
+	_fragHclBlueramp: require('./fragment_shader_hcl_blueramp.js'),
 
 	options: {
 		maxZoom: 22,
 		colorRamp: 'hue',
 		fractal: 'mandelbrot'
 	},
-
 	
 	// On instantiating the layer, it will initialize all the GL context
 	//   and upload the shaders to the GPU, along with the vertex buffer
@@ -71,18 +76,18 @@ L.GridLayer.MandelbrotGL = L.GridLayer.extend({
 	_loadGLProgram: function(fractal, ramp) {
 		var gl = this._gl;
 		
-		var colouringFragment = this._fragmentShaderHueRamp;	// Default
+		var colouringFragment = this._fragHueramp;	// Default
 		if (this.options.colorRamp == 'blue') {
-			colouringFragment = this._fragmentShaderBlueRamp;
+			colouringFragment = this._fragBlueramp;
 		} else if (this.options.colorRamp == 'zebra') {
-			colouringFragment = this._fragmentShaderZebraRamp;
+			colouringFragment = this._fragZebra;
 		} else if (this.options.colorRamp == 'hclhue') {
-			colouringFragment = this._fragmentShaderHcl + this._fragmentShaderHclHue;
+			colouringFragment = this._fragHcl + this._fragHclHueramp;
 		} else if (this.options.colorRamp == 'hclblue') {
-			colouringFragment = this._fragmentShaderHcl + this._fragmentShaderHclBlue;
+			colouringFragment = this._fragHcl + this._fragHclBlueramp;
 		}
 		
-		var fractalFragment = this._fragmentShaderMandelbrot;
+		var fractalFragment = this._fragMandelbrot;
 		
 		
 		var program = gl.createProgram();
@@ -181,4 +186,30 @@ L.GridLayer.MandelbrotGL = L.GridLayer.extend({
 L.gridLayer.mandelbrotGL = function (options) {
 	return new L.GridLayer.MandelbrotGL(options);
 };
+
+},{"./fragment_shader_blueramp.js":"@/fragment_shader_blueramp.js","./fragment_shader_hcl.js":"@/fragment_shader_hcl.js","./fragment_shader_hcl_blueramp.js":"@/fragment_shader_hcl_blueramp.js","./fragment_shader_hcl_hueramp.js":"@/fragment_shader_hcl_hueramp.js","./fragment_shader_hueramp.js":"@/fragment_shader_hueramp.js","./fragment_shader_mandelbrot.js":"@/fragment_shader_mandelbrot.js","./fragment_shader_zebra.js":"@/fragment_shader_zebra.js","./simple_vertex_shader.js":"@/simple_vertex_shader.js"}],"@/fragment_shader_blueramp.js":[function(require,module,exports){
+module.exports = 'void main(){int a=0;float b,c;a=fractal();if(a!=0){b=float(a)/1e2;c=b/2.;gl_FragColor=vec4(c,c,b,1);}else gl_FragColor=vec4(0,0,0,1);}';
+
+},{}],"@/fragment_shader_hcl.js":[function(require,module,exports){
+module.exports = 'mat4 a=mat4(3.2404542,-1.5371385,-.4985314,0,-.969266,1.8760108,.041556,0,.0556434,-.2040259,1.0572252,0,0,0,0,1);float lab2xyz(float b){if(b>.00080817591)return pow(b,3.);else return (b-.0005387931)/.030418113;}vec4 hcl2rgb(vec4 b){float c,d,e,f,g,h,i,j,k;c=b[0];d=b[1];e=b[2];f=b[3];c*=2.*3.141592653589793;g=cos(c)*d;h=sin(c)*d;i=(e+.0625)/.453126;j=i+g/1.953125;k=i-h/.78125;j=lab2xyz(j)*.95047;i=lab2xyz(i)*1.;k=lab2xyz(k)*1.08883;return vec4(j,i,k,f)*a;}';
+
+},{}],"@/fragment_shader_hcl_blueramp.js":[function(require,module,exports){
+module.exports = 'void main(){int b=0;b=fractal();if(b>0){float c,d,e;c=.7+float(b)/2e3;d=.15+float(b)/4e2;e=float(b)/2e2;gl_FragColor=hcl2rgb(vec4(c,e,d,1));}else gl_FragColor=vec4(0,0,0,1);}';
+
+},{}],"@/fragment_shader_hcl_hueramp.js":[function(require,module,exports){
+module.exports = 'void main(){int b=0;b=fractal();if(b>0){float c,d,e;c=float(b)/25.;d=.2+float(b)/1e3;e=clamp(float(b)/3e2,.3,.7);gl_FragColor=hcl2rgb(vec4(c,e,d,1));}else gl_FragColor=vec4(0,0,0,1);}';
+
+},{}],"@/fragment_shader_hueramp.js":[function(require,module,exports){
+module.exports = 'void main(){int b,g;b=0;float c,d,e,f,h,i,j,k;b=fractal();if(b!=0){c=float(b)/2e2;d=.6;e=1.;f=c*6.;g=int(mod(float(f),6.));h=fract(f);i=e*(1.-d);j=e*(1.-h*d);k=e*(1.-(1.-h)*d);if(g==0)gl_FragColor=vec4(e,k,i,1);else if(g==1)gl_FragColor=vec4(j,e,i,1);else if(g==2)gl_FragColor=vec4(i,e,k,1);else if(g==3)gl_FragColor=vec4(i,j,e,1);else if(g==4)gl_FragColor=vec4(k,i,e,1);else if(g==5)gl_FragColor=vec4(e,i,j,1);}else gl_FragColor=vec4(0,0,0,1);}';
+
+},{}],"@/fragment_shader_mandelbrot.js":[function(require,module,exports){
+module.exports = '#version 100\nprecision highp float;varying highp vec3 b;int fractal(){float c,d,e,f,g,h;c=b.x;d=b.y;e=b.z;f=0.;g=0.;h=0.;int i,j,k;i=0;j=100+int(e)*50;k=0;for(int i=1;i<200;i++){h=f*f-g*g+float(c);g=2.*f*g+float(d);f=h;if(k==0&&f*f+g*g>1e2){k=i;break;}}return k;}';
+
+},{}],"@/fragment_shader_zebra.js":[function(require,module,exports){
+module.exports = 'void main(){int c=0;c=fractal();if(c*2147483648/1073741824!=0)gl_FragColor=vec4(1);else gl_FragColor=vec4(0,0,0,1);}';
+
+},{}],"@/simple_vertex_shader.js":[function(require,module,exports){
+module.exports = 'attribute vec2 aVertexPosition;attribute highp vec3 aPlotPosition;varying highp vec3 b;void main(){gl_Position=vec4(aVertexPosition,1,1);b=aPlotPosition;}';
+
+},{}]},{},["@/Leaflet.GridLayer.MandelbrotGL.js"])
 //# sourceMappingURL=Leaflet.GridLayer.MandelbrotGL.js.map
