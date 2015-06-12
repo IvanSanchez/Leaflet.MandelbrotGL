@@ -7,7 +7,7 @@ L.GridLayer.MandelbrotGL = L.GridLayer.extend({
 	//   passed through to the fragment shader.
 	// Note that the source is in the shaders/ directory and will
 	//   get included here with some gobblejs magic.
-	_vertexShader: require('./simple_vertex_shader.js'),
+	_vertexShader: include('simple_vertex_shader.js'),
 
 	// The fragment shader is where the magic happens. Based on 
 	//   the coordinates of the four corners, it interpolates the 
@@ -26,13 +26,13 @@ L.GridLayer.MandelbrotGL = L.GridLayer.extend({
 	//
 	// TODO: Implement double floating precision as per 
 	//   https://www.thasler.com/blog/blog/glsl-part2-emu
-	_fragMandelbrot:  require('./fragment_shader_mandelbrot.js'),
-	_fragHueramp:     require('./fragment_shader_hueramp.js'),
-	_fragBlueramp:    require('./fragment_shader_blueramp.js'),
-	_fragZebra:       require('./fragment_shader_zebra.js'),
-	_fragHcl:         require('./fragment_shader_hcl.js'),
-	_fragHclHueramp:  require('./fragment_shader_hcl_hueramp.js'),
-	_fragHclBlueramp: require('./fragment_shader_hcl_blueramp.js'),
+	_fragMandelbrot:  include('fragment_shader_mandelbrot.js'),
+	_fragHueramp:     include('fragment_shader_hueramp.js'),
+	_fragBlueramp:    include('fragment_shader_blueramp.js'),
+	_fragZebra:       include('fragment_shader_zebra.js'),
+	_fragHcl:         include('fragment_shader_hcl.js'),
+	_fragHclHueramp:  include('fragment_shader_hcl_hueramp.js'),
+	_fragHclBlueramp: include('fragment_shader_hcl_blueramp.js'),
 
 	options: {
 		maxZoom: 22,

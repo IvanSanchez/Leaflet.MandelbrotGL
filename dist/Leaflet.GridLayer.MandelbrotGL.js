@@ -1,4 +1,3 @@
-(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({"@/Leaflet.GridLayer.MandelbrotGL.js":[function(require,module,exports){
 
 L.GridLayer.MandelbrotGL = L.GridLayer.extend({
 
@@ -8,7 +7,7 @@ L.GridLayer.MandelbrotGL = L.GridLayer.extend({
 	//   passed through to the fragment shader.
 	// Note that the source is in the shaders/ directory and will
 	//   get included here with some gobblejs magic.
-	_vertexShader: require('./simple_vertex_shader.js'),
+	_vertexShader: 'attribute vec2 aVertexPosition;attribute highp vec3 aPlotPosition;varying highp vec3 b;void main(){gl_Position=vec4(aVertexPosition,1,1);b=aPlotPosition;}',
 
 	// The fragment shader is where the magic happens. Based on 
 	//   the coordinates of the four corners, it interpolates the 
@@ -27,13 +26,13 @@ L.GridLayer.MandelbrotGL = L.GridLayer.extend({
 	//
 	// TODO: Implement double floating precision as per 
 	//   https://www.thasler.com/blog/blog/glsl-part2-emu
-	_fragMandelbrot:  require('./fragment_shader_mandelbrot.js'),
-	_fragHueramp:     require('./fragment_shader_hueramp.js'),
-	_fragBlueramp:    require('./fragment_shader_blueramp.js'),
-	_fragZebra:       require('./fragment_shader_zebra.js'),
-	_fragHcl:         require('./fragment_shader_hcl.js'),
-	_fragHclHueramp:  require('./fragment_shader_hcl_hueramp.js'),
-	_fragHclBlueramp: require('./fragment_shader_hcl_blueramp.js'),
+	_fragMandelbrot:  '#version 100\nprecision highp float;varying highp vec3 b;int fractal(){float c,d,e,f,g,h;c=b.x;d=b.y;e=b.z;f=0.;g=0.;h=0.;int i,j,k;i=0;j=100+int(e)*50;k=0;for(int i=1;i<200;i++){h=f*f-g*g+float(c);g=2.*f*g+float(d);f=h;if(k==0&&f*f+g*g>1e2){k=i;break;}}return k;}',
+	_fragHueramp:     'void main(){int b,g;b=0;float c,d,e,f,h,i,j,k;b=fractal();if(b!=0){c=float(b)/2e2;d=.6;e=1.;f=c*6.;g=int(mod(float(f),6.));h=fract(f);i=e*(1.-d);j=e*(1.-h*d);k=e*(1.-(1.-h)*d);if(g==0)gl_FragColor=vec4(e,k,i,1);else if(g==1)gl_FragColor=vec4(j,e,i,1);else if(g==2)gl_FragColor=vec4(i,e,k,1);else if(g==3)gl_FragColor=vec4(i,j,e,1);else if(g==4)gl_FragColor=vec4(k,i,e,1);else if(g==5)gl_FragColor=vec4(e,i,j,1);}else gl_FragColor=vec4(0,0,0,1);}',
+	_fragBlueramp:    'void main(){int a=0;float b,c;a=fractal();if(a!=0){b=float(a)/1e2;c=b/2.;gl_FragColor=vec4(c,c,b,1);}else gl_FragColor=vec4(0,0,0,1);}',
+	_fragZebra:       'void main(){int c=0;c=fractal();if(c*2147483648/1073741824!=0)gl_FragColor=vec4(1);else gl_FragColor=vec4(0,0,0,1);}',
+	_fragHcl:         'mat4 a=mat4(3.2404542,-1.5371385,-.4985314,0,-.969266,1.8760108,.041556,0,.0556434,-.2040259,1.0572252,0,0,0,0,1);float lab2xyz(float b){if(b>.00080817591)return pow(b,3.);else return (b-.0005387931)/.030418113;}vec4 hcl2rgb(vec4 b){float c,d,e,f,g,h,i,j,k;c=b[0];d=b[1];e=b[2];f=b[3];c*=2.*3.141592653589793;g=cos(c)*d;h=sin(c)*d;i=(e+.0625)/.453126;j=i+g/1.953125;k=i-h/.78125;j=lab2xyz(j)*.95047;i=lab2xyz(i)*1.;k=lab2xyz(k)*1.08883;return vec4(j,i,k,f)*a;}',
+	_fragHclHueramp:  'void main(){int b=0;b=fractal();if(b>0){float c,d,e;c=float(b)/25.;d=.2+float(b)/1e3;e=clamp(float(b)/3e2,.3,.7);gl_FragColor=hcl2rgb(vec4(c,e,d,1));}else gl_FragColor=vec4(0,0,0,1);}',
+	_fragHclBlueramp: 'void main(){int b=0;b=fractal();if(b>0){float c,d,e;c=.7+float(b)/2e3;d=.15+float(b)/4e2;e=float(b)/2e2;gl_FragColor=hcl2rgb(vec4(c,e,d,1));}else gl_FragColor=vec4(0,0,0,1);}',
 
 	options: {
 		maxZoom: 22,
@@ -114,8 +113,6 @@ L.GridLayer.MandelbrotGL = L.GridLayer.extend({
 		gl.enableVertexAttribArray(this._aVertexPosition);
 		this._aPlotPosition = gl.getAttribLocation(program, "aPlotPosition");
 		gl.enableVertexAttribArray(this._aPlotPosition);
-
-		
 	},
 	
 	
@@ -186,30 +183,3 @@ L.GridLayer.MandelbrotGL = L.GridLayer.extend({
 L.gridLayer.mandelbrotGL = function (options) {
 	return new L.GridLayer.MandelbrotGL(options);
 };
-
-},{"./fragment_shader_blueramp.js":"@/fragment_shader_blueramp.js","./fragment_shader_hcl.js":"@/fragment_shader_hcl.js","./fragment_shader_hcl_blueramp.js":"@/fragment_shader_hcl_blueramp.js","./fragment_shader_hcl_hueramp.js":"@/fragment_shader_hcl_hueramp.js","./fragment_shader_hueramp.js":"@/fragment_shader_hueramp.js","./fragment_shader_mandelbrot.js":"@/fragment_shader_mandelbrot.js","./fragment_shader_zebra.js":"@/fragment_shader_zebra.js","./simple_vertex_shader.js":"@/simple_vertex_shader.js"}],"@/fragment_shader_blueramp.js":[function(require,module,exports){
-module.exports = 'void main(){int a=0;float b,c;a=fractal();if(a!=0){b=float(a)/1e2;c=b/2.;gl_FragColor=vec4(c,c,b,1);}else gl_FragColor=vec4(0,0,0,1);}';
-
-},{}],"@/fragment_shader_hcl.js":[function(require,module,exports){
-module.exports = 'mat4 a=mat4(3.2404542,-1.5371385,-.4985314,0,-.969266,1.8760108,.041556,0,.0556434,-.2040259,1.0572252,0,0,0,0,1);float lab2xyz(float b){if(b>.00080817591)return pow(b,3.);else return (b-.0005387931)/.030418113;}vec4 hcl2rgb(vec4 b){float c,d,e,f,g,h,i,j,k;c=b[0];d=b[1];e=b[2];f=b[3];c*=2.*3.141592653589793;g=cos(c)*d;h=sin(c)*d;i=(e+.0625)/.453126;j=i+g/1.953125;k=i-h/.78125;j=lab2xyz(j)*.95047;i=lab2xyz(i)*1.;k=lab2xyz(k)*1.08883;return vec4(j,i,k,f)*a;}';
-
-},{}],"@/fragment_shader_hcl_blueramp.js":[function(require,module,exports){
-module.exports = 'void main(){int b=0;b=fractal();if(b>0){float c,d,e;c=.7+float(b)/2e3;d=.15+float(b)/4e2;e=float(b)/2e2;gl_FragColor=hcl2rgb(vec4(c,e,d,1));}else gl_FragColor=vec4(0,0,0,1);}';
-
-},{}],"@/fragment_shader_hcl_hueramp.js":[function(require,module,exports){
-module.exports = 'void main(){int b=0;b=fractal();if(b>0){float c,d,e;c=float(b)/25.;d=.2+float(b)/1e3;e=clamp(float(b)/3e2,.3,.7);gl_FragColor=hcl2rgb(vec4(c,e,d,1));}else gl_FragColor=vec4(0,0,0,1);}';
-
-},{}],"@/fragment_shader_hueramp.js":[function(require,module,exports){
-module.exports = 'void main(){int b,g;b=0;float c,d,e,f,h,i,j,k;b=fractal();if(b!=0){c=float(b)/2e2;d=.6;e=1.;f=c*6.;g=int(mod(float(f),6.));h=fract(f);i=e*(1.-d);j=e*(1.-h*d);k=e*(1.-(1.-h)*d);if(g==0)gl_FragColor=vec4(e,k,i,1);else if(g==1)gl_FragColor=vec4(j,e,i,1);else if(g==2)gl_FragColor=vec4(i,e,k,1);else if(g==3)gl_FragColor=vec4(i,j,e,1);else if(g==4)gl_FragColor=vec4(k,i,e,1);else if(g==5)gl_FragColor=vec4(e,i,j,1);}else gl_FragColor=vec4(0,0,0,1);}';
-
-},{}],"@/fragment_shader_mandelbrot.js":[function(require,module,exports){
-module.exports = '#version 100\nprecision highp float;varying highp vec3 b;int fractal(){float c,d,e,f,g,h;c=b.x;d=b.y;e=b.z;f=0.;g=0.;h=0.;int i,j,k;i=0;j=100+int(e)*50;k=0;for(int i=1;i<200;i++){h=f*f-g*g+float(c);g=2.*f*g+float(d);f=h;if(k==0&&f*f+g*g>1e2){k=i;break;}}return k;}';
-
-},{}],"@/fragment_shader_zebra.js":[function(require,module,exports){
-module.exports = 'void main(){int c=0;c=fractal();if(c*2147483648/1073741824!=0)gl_FragColor=vec4(1);else gl_FragColor=vec4(0,0,0,1);}';
-
-},{}],"@/simple_vertex_shader.js":[function(require,module,exports){
-module.exports = 'attribute vec2 aVertexPosition;attribute highp vec3 aPlotPosition;varying highp vec3 b;void main(){gl_Position=vec4(aVertexPosition,1,1);b=aPlotPosition;}';
-
-},{}]},{},["@/Leaflet.GridLayer.MandelbrotGL.js"])
-//# sourceMappingURL=Leaflet.GridLayer.MandelbrotGL.js.map
