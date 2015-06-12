@@ -113,6 +113,8 @@ L.GridLayer.MandelbrotGL = L.GridLayer.extend({
 		gl.enableVertexAttribArray(this._aVertexPosition);
 		this._aPlotPosition = gl.getAttribLocation(program, "aPlotPosition");
 		gl.enableVertexAttribArray(this._aPlotPosition);
+
+		
 	},
 	
 	
