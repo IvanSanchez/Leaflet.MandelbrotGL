@@ -185,3 +185,4 @@ L.GridLayer.MandelbrotGL = L.GridLayer.extend({
 L.gridLayer.mandelbrotGL = function (options) {
 	return new L.GridLayer.MandelbrotGL(options);
 };
+//# sourceMappingURL=Leaflet.GridLayer.MandelbrotGL.js.map
